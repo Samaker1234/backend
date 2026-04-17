@@ -43,9 +43,12 @@ const projects = [
 async function seedDatabase() {
   try {
     console.log('✅ Connexion à PostgreSQL...');
+    const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://delamou_user:N7PlO9zvYJ9TKuA2Ejqhl58dFvCSKne9@dpg-d7go6pnavr4c73aejm4g-a.virginia-postgres.render.com/delamou';
     const pool = new Pool({
-      connectionString: process.env.DATABASE_URL,
-      ssl: process.env.DATABASE_URL?.includes('render.com') ? { rejectUnauthorized: false } : false
+      connectionString: DATABASE_URL,
+      ssl: {
+        rejectUnauthorized: false
+      }
     });
 
     // Nettoyer la table

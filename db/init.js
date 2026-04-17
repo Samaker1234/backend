@@ -13,7 +13,9 @@ async function initDatabase() {
     
     const pool = new Pool({
       connectionString: DATABASE_URL,
-      ssl: false
+      ssl: {
+        rejectUnauthorized: false
+      }
     });
 
     // Lire le schéma SQL

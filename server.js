@@ -1,9 +1,7 @@
 const express = require('express');
-const initSqlJs = require('sql.js');
+const { Pool } = require('pg');
 const cors = require('cors');
 const helmet = require('helmet');
-const path = require('path');
-const fs = require('fs');
 require('dotenv').config();
 
 const app = express();
@@ -15,23 +13,24 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Connexion à SQLite avec sql.js
-let db;
-const dbPath = path.join(__dirname, 'database.sqlite');
+// Fallback DATABASE_URL si dotenv ne fonctionne pas
+const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://delamou_user:N7PlO9zvYJ9TKuA2Ejqhl58dFvCSKne9@dpg-d7go6pnavr4c73aejm4g-a.virginia-postgres.render.com/delamou';
+
+// Connexion à PostgreSQL
+const pool = new Pool({
+  connectionString: DATABASE_URL,
+  ssl: DATABASE_URL?.includes('render.com') ? { rejectUnauthorized: false } : false
+});
 
 async function initDatabase() {
-  const SQL = await initSqlJs();
-  
-  // Charger ou créer la base de données
-  if (fs.existsSync(dbPath)) {
-    const fileBuffer = fs.readFileSync(dbPath);
-    db = new SQL.Database(fileBuffer);
-  } else {
-    db = new SQL.Database();
+  try {
+    await pool.connect();
+    console.log('✅ Connexion à PostgreSQL réussie');
+    global.pool = pool;
+  } catch (error) {
+    console.error('❌ Erreur lors de la connexion à PostgreSQL:', error);
+    process.exit(1);
   }
-  
-  console.log('✅ Connexion à SQLite réussie');
-  global.db = db;
 }
 
 initDatabase().then(() => {
@@ -60,21 +59,6 @@ initDatabase().then(() => {
     console.error(err.stack);
     res.status(500).json({ error: 'Une erreur est survenue sur le serveur' });
   });
-
-  // Sauvegarder la base de données avant de fermer
-  function saveDatabase() {
-    const data = db.export();
-    const buffer = Buffer.from(data);
-    fs.writeFileSync(dbPath, buffer);
-  }
-
-  process.on('SIGINT', () => {
-    saveDatabase();
-    process.exit(0);
-  });
-
-  // Sauvegarder périodiquement
-  setInterval(saveDatabase, 30000);
 
   // Démarrage du serveur
   app.listen(PORT, () => {

@@ -2,19 +2,13 @@ const express = require('express');
 const router = express.Router();
 
 // GET tous les projets
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   try {
-    const stmt = global.db.prepare('SELECT * FROM projects ORDER BY created_at ASC');
-    const projects = [];
-    while (stmt.step()) {
-      const project = stmt.getAsObject();
-      // Parser le champ tools qui est stocké comme JSON
-      if (project.tools) {
-        project.tools = JSON.parse(project.tools);
-      }
-      projects.push(project);
-    }
-    stmt.free();
+    const result = await global.pool.query('SELECT * FROM projects ORDER BY created_at ASC');
+    const projects = result.rows.map(project => ({
+      ...project,
+      tools: project.tools || []
+    }));
     res.json(projects);
   } catch (error) {
     console.error('Erreur lors de la récupération des projets:', error);
@@ -23,15 +17,17 @@ router.get('/', (req, res) => {
 });
 
 // GET un projet par ID
-router.get('/:id', (req, res) => {
+router.get('/:id', async (req, res) => {
   try {
-    const stmt = global.db.prepare('SELECT * FROM projects WHERE id = ?');
-    stmt.bind([parseInt(req.params.id)]);
-    const project = stmt.getAsObject()[0];
-    if (!project) {
+    const result = await global.pool.query('SELECT * FROM projects WHERE id = $1', [req.params.id]);
+    if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Projet non trouvé' });
     }
-    res.json(project);
+    const project = result.rows[0];
+    res.json({
+      ...project,
+      tools: project.tools || []
+    });
   } catch (error) {
     console.error('Erreur lors de la récupération du projet:', error);
     res.status(500).json({ error: 'Erreur lors de la récupération du projet' });
@@ -39,15 +35,14 @@ router.get('/:id', (req, res) => {
 });
 
 // POST créer un nouveau projet
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   try {
     const { title, description, tools, github_url, demo_url, image_url, category } = req.body;
-    const stmt = global.db.prepare(
-      'INSERT INTO projects (title, description, tools, github_url, demo_url, image_url, category) VALUES (?, ?, ?, ?, ?, ?, ?)'
+    const result = await global.pool.query(
+      'INSERT INTO projects (title, description, tools, github_url, demo_url, image_url, category) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+      [title, description, tools || [], github_url, demo_url, image_url, category]
     );
-    stmt.run([title, description, JSON.stringify(tools), github_url, demo_url, image_url, category]);
-    const newProject = global.db.prepare('SELECT * FROM projects WHERE id = last_insert_rowid()').getAsObject()[0];
-    res.status(201).json(newProject);
+    res.status(201).json(result.rows[0]);
   } catch (error) {
     console.error('Erreur lors de la création du projet:', error);
     res.status(400).json({ error: 'Erreur lors de la création du projet' });
@@ -55,20 +50,17 @@ router.post('/', (req, res) => {
 });
 
 // PUT mettre à jour un projet
-router.put('/:id', (req, res) => {
+router.put('/:id', async (req, res) => {
   try {
     const { title, description, tools, github_url, demo_url, image_url, category } = req.body;
-    const stmt = global.db.prepare(
-      'UPDATE projects SET title = ?, description = ?, tools = ?, github_url = ?, demo_url = ?, image_url = ?, category = ? WHERE id = ?'
+    const result = await global.pool.query(
+      'UPDATE projects SET title = $1, description = $2, tools = $3, github_url = $4, demo_url = $5, image_url = $6, category = $7 WHERE id = $8 RETURNING *',
+      [title, description, tools || [], github_url, demo_url, image_url, category, req.params.id]
     );
-    stmt.run([title, description, JSON.stringify(tools), github_url, demo_url, image_url, category, parseInt(req.params.id)]);
-    const projectStmt = global.db.prepare('SELECT * FROM projects WHERE id = ?');
-    projectStmt.bind([parseInt(req.params.id)]);
-    const project = projectStmt.getAsObject()[0];
-    if (!project) {
+    if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Projet non trouvé' });
     }
-    res.json(project);
+    res.json(result.rows[0]);
   } catch (error) {
     console.error('Erreur lors de la mise à jour du projet:', error);
     res.status(400).json({ error: 'Erreur lors de la mise à jour du projet' });
@@ -76,10 +68,9 @@ router.put('/:id', (req, res) => {
 });
 
 // DELETE supprimer un projet
-router.delete('/:id', (req, res) => {
+router.delete('/:id', async (req, res) => {
   try {
-    const stmt = global.db.prepare('DELETE FROM projects WHERE id = ?');
-    stmt.run([parseInt(req.params.id)]);
+    await global.pool.query('DELETE FROM projects WHERE id = $1', [req.params.id]);
     res.json({ message: 'Projet supprimé avec succès' });
   } catch (error) {
     console.error('Erreur lors de la suppression du projet:', error);
