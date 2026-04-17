@@ -1,0 +1,17 @@
+node_modules/
+*.log
+.DS_Store
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Database
+database.sqlite
+*.sqlite
+*.sqlite3
+
+# Editor
+.vscode
+.idea
