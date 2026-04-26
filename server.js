@@ -12,9 +12,50 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
 // Middleware
+const { sendSecurityAlert } = require('./services/emailService');
 app.use(helmet());
 app.use(cors());
 app.use(express.json());
+
+// Routes pour l'alerte de sécurité
+app.post('/api/security/alert', async (req, res) => {
+  const { attempts, userAgent } = req.body;
+  await sendSecurityAlert({ attempts, userAgent });
+  res.json({ success: true });
+});
+
+// Routes pour l'authentification
+app.post('/api/auth/login', async (req, res) => {
+  const { password } = req.body;
+  try {
+    const admin = await prisma.admin.findFirst();
+    if (admin && admin.password === password) {
+      res.json({ success: true });
+    } else {
+      res.status(401).json({ success: false, message: 'Mot de passe incorrect' });
+    }
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.post('/api/auth/change-password', async (req, res) => {
+  const { oldPassword, newPassword } = req.body;
+  try {
+    const admin = await prisma.admin.findFirst();
+    if (admin && admin.password === oldPassword) {
+      await prisma.admin.update({
+        where: { id: admin.id },
+        data: { password: newPassword }
+      });
+      res.json({ success: true, message: 'Mot de passe mis à jour' });
+    } else {
+      res.status(401).json({ success: false, message: 'Ancien mot de passe incorrect' });
+    }
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
 app.use(express.urlencoded({ extended: true }));
 
 // Rendre prisma global pour les routes (ou l'exporter)

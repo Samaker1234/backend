@@ -188,9 +188,50 @@ async function sendSkillNotification(skill) {
   }
 }
 
+// Fonction pour notifier une tentative d'intrusion
+async function sendSecurityAlert(details) {
+  const mailOptions = {
+    from: `"Sécurité Portfolio" <${process.env.EMAIL_FROM || process.env.EMAIL_USER}>`,
+    to: process.env.EMAIL_USER,
+    subject: `⚠️ ALERTE SÉCURITÉ : Tentatives de connexion suspectes`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 2px solid #ef4444; border-radius: 12px; overflow: hidden;">
+        <div style="background: #ef4444; padding: 20px; text-align: center;">
+          <h2 style="color: #ffffff; margin: 0;">Alerte de Sécurité</h2>
+        </div>
+        <div style="padding: 20px;">
+          <p>Bonjour,</p>
+          <p>Le système a détecté plusieurs tentatives de connexion échouées sur votre tableau de bord admin.</p>
+          <div style="background: #fef2f2; padding: 15px; border-radius: 8px; margin-top: 15px; border-left: 4px solid #ef4444;">
+            <p><strong>Détails :</strong></p>
+            <ul>
+              <li><strong>Tentatives échouées :</strong> ${details.attempts}</li>
+              <li><strong>Dernière tentative :</strong> ${new Date().toLocaleString('fr-FR')}</li>
+              <li><strong>Navigateur :</strong> ${details.userAgent || 'Inconnu'}</li>
+            </ul>
+          </div>
+          <p style="color: #6b7280; font-size: 14px; margin-top: 20px;">
+            Si ce n'était pas vous, nous vous recommandons de rester vigilant.
+          </p>
+        </div>
+      </div>
+    `,
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    console.log('✅ Alerte de sécurité envoyée');
+    return true;
+  } catch (error) {
+    console.error('❌ Erreur lors de l\'envoi de l\'alerte de sécurité:', error);
+    return false;
+  }
+}
+
 module.exports = {
   sendContactEmail,
   sendConfirmationEmail,
   sendProjectNotification,
   sendSkillNotification,
+  sendSecurityAlert,
 };
