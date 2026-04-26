@@ -56,6 +56,33 @@ app.post('/api/auth/change-password', async (req, res) => {
     res.status(500).json({ success: false, error: error.message });
   }
 });
+
+app.get('/api/auth/cv', async (req, res) => {
+  try {
+    const admin = await prisma.admin.findFirst();
+    res.json({ cv_url: admin?.cv_url || '/cv.pdf' });
+  } catch (error) {
+    res.json({ cv_url: '/cv.pdf' });
+  }
+});
+
+app.post('/api/auth/update-cv', async (req, res) => {
+  const { password, cv_url } = req.body;
+  try {
+    const admin = await prisma.admin.findFirst();
+    if (admin && admin.password === password) {
+      await prisma.admin.update({
+        where: { id: admin.id },
+        data: { cv_url }
+      });
+      res.json({ success: true, message: 'Lien du CV mis à jour' });
+    } else {
+      res.status(401).json({ success: false, message: 'Mot de passe incorrect' });
+    }
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
 app.use(express.urlencoded({ extended: true }));
 
 // Rendre prisma global pour les routes (ou l'exporter)

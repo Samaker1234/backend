@@ -48,6 +48,7 @@ model Skill {
 model Admin {
   id        Int      @id @default(autoincrement())
   password  String
+  cv_url    String?
   createdAt DateTime @default(now()) @map("created_at")
 
   @@map("admin_config")
