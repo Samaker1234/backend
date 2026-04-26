@@ -1,5 +1,4 @@
 const express = require('express');
-const { Pool } = require('pg');
 const cors = require('cors');
 const helmet = require('helmet');
 const fs = require('fs');
@@ -9,34 +8,24 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
+
 // Middleware
 app.use(helmet());
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Fallback DATABASE_URL si dotenv ne fonctionne pas
-const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://delamou_user:N7PlO9zvYJ9TKuA2Ejqhl58dFvCSKne9@dpg-d7go6pnavr4c73aejm4g-a/delamou';
-
-// Connexion à PostgreSQL
-const pool = new Pool({
-  connectionString: DATABASE_URL,
-  ssl: DATABASE_URL?.includes('render.com') ? { rejectUnauthorized: false } : false
-});
+// Rendre prisma global pour les routes (ou l'exporter)
+global.prisma = prisma;
 
 async function initDatabase() {
   try {
-    await pool.connect();
-    console.log('✅ Connexion à PostgreSQL réussie');
-    global.pool = pool;
-
-    // Créer les tables si elles n'existent pas
-    const schemaPath = path.join(__dirname, 'db/schema.sql');
-    const schema = fs.readFileSync(schemaPath, 'utf8');
-    await pool.query(schema);
-    console.log('✅ Tables créées/vérifiées avec succès');
+    await prisma.$connect();
+    console.log('✅ Connexion à Supabase via Prisma réussie');
   } catch (error) {
-    console.error('❌ Erreur lors de la connexion à PostgreSQL:', error);
+    console.error('❌ Erreur lors de la connexion à la base de données:', error);
     process.exit(1);
   }
 }

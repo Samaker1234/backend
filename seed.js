@@ -1,5 +1,5 @@
-const { Pool } = require('pg');
-require('dotenv').config();
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
 
 const projects = [
   {
@@ -42,34 +42,26 @@ const projects = [
 
 async function seedDatabase() {
   try {
-    console.log('✅ Connexion à PostgreSQL...');
-    const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://delamou_user:N7PlO9zvYJ9TKuA2Ejqhl58dFvCSKne9@dpg-d7go6pnavr4c73aejm4g-a/delamou';
-    const pool = new Pool({
-      connectionString: DATABASE_URL,
-      ssl: {
-        rejectUnauthorized: false
-      }
-    });
-
+    console.log('✅ Connexion à Supabase via Prisma...');
+    
     // Nettoyer la table
-    await pool.query('DELETE FROM projects');
+    await prisma.project.deleteMany();
     console.log('🗑️ Table nettoyée');
     
     // Insérer les projets
-    for (const project of projects) {
-      await pool.query(
-        'INSERT INTO projects (title, description, tools, github_url, demo_url, image_url, category) VALUES ($1, $2, $3, $4, $5, $6, $7)',
-        [project.title, project.description, project.tools, project.github_url, project.demo_url, project.image_url, project.category]
-      );
-    }
+    await prisma.project.createMany({
+      data: projects
+    });
+    
     console.log('✅ Projets insérés avec succès');
     console.log(`📊 ${projects.length} projets ajoutés`);
 
-    await pool.end();
+    await prisma.$disconnect();
     console.log('🎉 Seed terminé avec succès');
     process.exit(0);
   } catch (err) {
     console.error('❌ Erreur:', err);
+    await prisma.$disconnect();
     process.exit(1);
   }
 }

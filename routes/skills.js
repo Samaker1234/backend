@@ -1,11 +1,17 @@
 const express = require('express');
 const router = express.Router();
+const { sendSkillNotification } = require('../services/emailService');
 
 // GET toutes les compétences
 router.get('/', async (req, res) => {
   try {
-    const result = await global.pool.query('SELECT * FROM skills ORDER BY category, name');
-    res.json(result.rows);
+    const skills = await global.prisma.skill.findMany({
+      orderBy: [
+        { category: 'asc' },
+        { name: 'asc' }
+      ]
+    });
+    res.json(skills);
   } catch (error) {
     console.error('Erreur lors de la récupération des compétences:', error);
     res.status(500).json({ error: 'Erreur lors de la récupération des compétences' });
@@ -15,11 +21,13 @@ router.get('/', async (req, res) => {
 // GET une compétence par ID
 router.get('/:id', async (req, res) => {
   try {
-    const result = await global.pool.query('SELECT * FROM skills WHERE id = $1', [req.params.id]);
-    if (result.rows.length === 0) {
+    const skill = await global.prisma.skill.findUnique({
+      where: { id: parseInt(req.params.id) }
+    });
+    if (!skill) {
       return res.status(404).json({ error: 'Compétence non trouvée' });
     }
-    res.json(result.rows[0]);
+    res.json(skill);
   } catch (error) {
     console.error('Erreur lors de la récupération de la compétence:', error);
     res.status(500).json({ error: 'Erreur lors de la récupération de la compétence' });
@@ -30,11 +38,14 @@ router.get('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const { name, category, level, icon } = req.body;
-    const result = await global.pool.query(
-      'INSERT INTO skills (name, category, level, icon) VALUES ($1, $2, $3, $4) RETURNING *',
-      [name, category, level, icon]
-    );
-    res.status(201).json(result.rows[0]);
+    const skill = await global.prisma.skill.create({
+      data: { name, category, level, icon }
+    });
+    
+    // Envoyer la notification par email
+    await sendSkillNotification(skill);
+    
+    res.status(201).json(skill);
   } catch (error) {
     console.error('Erreur lors de la création de la compétence:', error);
     res.status(400).json({ error: 'Erreur lors de la création de la compétence' });
@@ -45,14 +56,11 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     const { name, category, level, icon } = req.body;
-    const result = await global.pool.query(
-      'UPDATE skills SET name = $1, category = $2, level = $3, icon = $4 WHERE id = $5 RETURNING *',
-      [name, category, level, icon, req.params.id]
-    );
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Compétence non trouvée' });
-    }
-    res.json(result.rows[0]);
+    const skill = await global.prisma.skill.update({
+      where: { id: parseInt(req.params.id) },
+      data: { name, category, level, icon }
+    });
+    res.json(skill);
   } catch (error) {
     console.error('Erreur lors de la mise à jour de la compétence:', error);
     res.status(400).json({ error: 'Erreur lors de la mise à jour de la compétence' });
@@ -62,7 +70,9 @@ router.put('/:id', async (req, res) => {
 // DELETE supprimer une compétence
 router.delete('/:id', async (req, res) => {
   try {
-    await global.pool.query('DELETE FROM skills WHERE id = $1', [req.params.id]);
+    await global.prisma.skill.delete({
+      where: { id: parseInt(req.params.id) }
+    });
     res.json({ message: 'Compétence supprimée avec succès' });
   } catch (error) {
     console.error('Erreur lors de la suppression de la compétence:', error);

@@ -12,12 +12,10 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'Tous les champs sont requis' });
     }
     
-    // Sauvegarder dans la base de données
-    const result = await global.pool.query(
-      'INSERT INTO messages (name, email, message) VALUES ($1, $2, $3) RETURNING *',
-      [name, email, message]
-    );
-    const newMessage = result.rows[0];
+    // Sauvegarder dans la base de données via Prisma
+    const newMessage = await global.prisma.message.create({
+      data: { name, email, message }
+    });
     
     // Envoyer l'email de notification
     const emailSent = await sendContactEmail({ name, email, message });
@@ -39,8 +37,10 @@ router.post('/', async (req, res) => {
 // GET tous les messages (optionnel, pour l'admin)
 router.get('/', async (req, res) => {
   try {
-    const result = await global.pool.query('SELECT * FROM messages ORDER BY created_at DESC');
-    res.json(result.rows);
+    const messages = await global.prisma.message.findMany({
+      orderBy: { createdAt: 'desc' }
+    });
+    res.json(messages);
   } catch (error) {
     console.error('Erreur lors de la récupération des messages:', error);
     res.status(500).json({ error: 'Erreur lors de la récupération des messages' });
@@ -50,7 +50,9 @@ router.get('/', async (req, res) => {
 // DELETE un message
 router.delete('/:id', async (req, res) => {
   try {
-    await global.pool.query('DELETE FROM messages WHERE id = $1', [req.params.id]);
+    await global.prisma.message.delete({
+      where: { id: parseInt(req.params.id) }
+    });
     res.json({ message: 'Message supprimé avec succès' });
   } catch (error) {
     console.error('Erreur lors de la suppression du message:', error);

@@ -1,5 +1,5 @@
-const { Pool } = require('pg');
-require('dotenv').config();
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
 
 const skills = [
   // Expertise Mathématique et Statistique
@@ -45,34 +45,26 @@ const skills = [
 
 async function seedSkills() {
   try {
-    console.log('✅ Connexion à PostgreSQL...');
-    const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://delamou_user:N7PlO9zvYJ9TKuA2Ejqhl58dFvCSKne9@dpg-d7go6pnavr4c73aejm4g-a/delamou';
-    const pool = new Pool({
-      connectionString: DATABASE_URL,
-      ssl: {
-        rejectUnauthorized: false
-      }
-    });
-
+    console.log('✅ Connexion à Supabase via Prisma...');
+    
     // Nettoyer la table skills
-    await pool.query('DELETE FROM skills');
+    await prisma.skill.deleteMany();
     console.log('🗑️ Table skills nettoyée');
     
     // Insérer les compétences
-    for (const skill of skills) {
-      await pool.query(
-        'INSERT INTO skills (name, category, level) VALUES ($1, $2, $3)',
-        [skill.name, skill.category, skill.level]
-      );
-    }
+    await prisma.skill.createMany({
+      data: skills
+    });
+    
     console.log('✅ Compétences insérées avec succès');
     console.log(`📊 ${skills.length} compétences ajoutées`);
 
-    await pool.end();
+    await prisma.$disconnect();
     console.log('🎉 Seed des compétences terminé avec succès');
     process.exit(0);
   } catch (err) {
     console.error('❌ Erreur:', err);
+    await prisma.$disconnect();
     process.exit(1);
   }
 }
