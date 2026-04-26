@@ -9,7 +9,8 @@
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",
     "seed": "node seed.js",
-    "seed-skills": "node seedSkills.js"
+    "seed-skills": "node seedSkills.js",
+    "postinstall": "prisma generate"
   },
   "keywords": [
     "nodejs",
@@ -28,10 +29,10 @@
     "helmet": "^7.2.0",
     "node-fetch": "^2.7.0",
     "nodemailer": "^6.10.1",
-    "pg": "^8.20.0"
+    "pg": "^8.20.0",
+    "prisma": "^5.22.0"
   },
   "devDependencies": {
-    "nodemon": "^3.0.2",
-    "prisma": "^5.22.0"
+    "nodemon": "^3.0.2"
   }
 }
