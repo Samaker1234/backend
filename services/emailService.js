@@ -193,10 +193,10 @@ async function sendSecurityAlert(details) {
   const mailOptions = {
     from: `"Sécurité Portfolio" <${process.env.EMAIL_FROM || process.env.EMAIL_USER}>`,
     to: process.env.EMAIL_USER,
-    subject: `⚠️ ALERTE SÉCURITÉ : Tentatives de connexion suspectes`,
+    subject: `🚨 ALERTE SÉCURITÉ : Tentative d'intrusion`,
     html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 2px solid #ef4444; border-radius: 12px; overflow: hidden;">
-        <div style="background: #ef4444; padding: 20px; text-align: center;">
+      <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 16px; overflow: hidden; background-color: #ffffff;">
+        <div style="background: linear-gradient(135deg, #ef4444 0%, #991b1b 100%); padding: 30px; text-align: center;">
           <h2 style="color: #ffffff; margin: 0;">Alerte de Sécurité</h2>
         </div>
         <div style="padding: 20px;">
@@ -210,17 +210,35 @@ async function sendSecurityAlert(details) {
               <li><strong>Navigateur :</strong> ${details.userAgent || 'Inconnu'}</li>
             </ul>
           </div>
+          
+          ${details.screenshot ? `
+          <div style="margin-top: 20px;">
+            <p><strong>Photo capturée de l'intrus :</strong></p>
+            <div style="border: 2px solid #ef4444; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);">
+              <img src="cid:intruder_photo" style="width: 100%; display: block;" alt="Photo Intrus" />
+            </div>
+          </div>
+          ` : '<p style="color: #6b7280; font-style: italic; margin-top: 20px;">Note: Aucune photo n\'a pu être capturée (permission caméra refusée).</p>'}
+
           <p style="color: #6b7280; font-size: 14px; margin-top: 20px;">
-            Si ce n'était pas vous, nous vous recommandons de rester vigilant.
+            Si ce n'était pas vous, nous vous recommandons de rester vigilant et éventuellement de changer vos accès.
           </p>
         </div>
       </div>
     `,
+    attachments: details.screenshot ? [
+      {
+        filename: 'intrus.png',
+        content: details.screenshot.split("base64,")[1],
+        encoding: 'base64',
+        cid: 'intruder_photo'
+      }
+    ] : []
   };
 
   try {
     await transporter.sendMail(mailOptions);
-    console.log('✅ Alerte de sécurité envoyée');
+    console.log('✅ Alerte de sécurité envoyée avec photo');
     return true;
   } catch (error) {
     console.error('❌ Erreur lors de l\'envoi de l\'alerte de sécurité:', error);

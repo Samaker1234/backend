@@ -19,8 +19,8 @@ app.use(express.json());
 
 // Routes pour l'alerte de sécurité
 app.post('/api/security/alert', async (req, res) => {
-  const { attempts, userAgent } = req.body;
-  await sendSecurityAlert({ attempts, userAgent });
+  const { attempts, userAgent, screenshot } = req.body;
+  await sendSecurityAlert({ attempts, userAgent, screenshot });
   res.json({ success: true });
 });
 
